@@ -13,6 +13,7 @@ service-account-credentials.json
 **/ui-debug.log
 **/database-debug.log
 **/firebase-debug.log
+**/firestore-debug.log
 **/pubsub-debug.log
 **/tsconfig-compile.json
 yarn.lock
