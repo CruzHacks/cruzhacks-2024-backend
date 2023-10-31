@@ -5,10 +5,9 @@
 1. Clone this repository
 2. Install [firebase-tools](https://www.npmjs.com/package/firebase-tools) to
    emulate backend and run deploys
-3. Navigate to the root of the repository and run `yarn` whil will install all
+3. Navigate to the root of the repository and run `yarn` to install all
    the dependencies
-4. Run `yarn start` will start the firebase emulators, configure firebase.json
-   to change emulation ports
+4. Run `yarn start` to start the firebase emulators
 
 ## Available Scripts
 
