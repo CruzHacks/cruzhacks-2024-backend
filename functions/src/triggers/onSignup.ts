@@ -17,7 +17,7 @@ export const onSignup = auth.user().onCreate(async (user) => {
     getFirestore()
       .doc(`users/${user.uid}`)
       .set(
-        { _lastCommited: FieldValue.serverTimestamp(), role },
+        { _lastCommitted: FieldValue.serverTimestamp(), role },
         { merge: true }
       );
   } catch (err) {
@@ -28,8 +28,7 @@ export const onSignup = auth.user().onCreate(async (user) => {
 });
 
 /**
- * Super sketchy way to mirror user claims to Firestore.
- * Causes infinite loops
+ * Updates Custom Claims when a user document is written.
  */
 export const mirrorCustomClaims = onDocumentWritten(
   "users/{userId}",
