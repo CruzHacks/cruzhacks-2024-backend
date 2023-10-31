@@ -61,8 +61,4 @@ app.get(
   }
 );
 
-app.get("/testAuthorizedAdmin", isAuthorized({hasRole:'admin'}), (req, res) => {
-  res.status(200).send("Hello from Firebase!");
-});
-
 export const auth = onRequest(app);
