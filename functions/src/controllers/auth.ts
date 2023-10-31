@@ -1,50 +1,65 @@
-/**
- * Express router for providing authentication related routes.
- * @module routers/auth
- * @requires express
- */
-
 import { onRequest } from "firebase-functions/v2/https";
 import * as express from "express";
 import * as cors from "cors";
 import bodyParser = require("body-parser");
 import { isAuthenticated, isAuthorized } from "../utils/middleware";
+import { getFirestore } from "firebase-admin/firestore";
+import ensureError from "../utils/ensureError";
+import { logger } from "firebase-functions/v2";
 
-/**
- * Express router to mount authentication related functions on.
- * @type {object}
- * @const
- * @namespace authRouter
- */
 const app = express();
 app.use(bodyParser.json());
 app.use(cors({ origin: true }));
 
 /**
- * Route for testing if routes are working.
- * @name get/test
- * @function
- * @memberof module:routers/auth~authRouter
- * @inner
- * @param {string} path - Express path
- * @param {callback} middleware - Express middleware.
+ * Endpoint to check if the user's role is synced with their custom claims.
  */
-app.get("/test", (req, res) => {
+app.get("/checkRoleSynced", isAuthenticated, async (req, res) => {
+  try {
+    await getFirestore()
+      .collection("users")
+      .doc(res.locals.uid)
+      .get()
+      .then((doc) => {
+        const firestoreRole = doc.data()?.role;
+        const customClaimRole = res.locals.role;
+        if (firestoreRole !== customClaimRole) {
+          logger.warn("Roles are out of sync! For user: " + res.locals.uid);
+          res
+            .status(200)
+            .send({ customClaimRole, firestoreRole, synced: false });
+          return;
+        }
+        res.status(200).send({ customClaimRole, firestoreRole, synced: true });
+        return;
+      })
+      .catch((err) => {
+        throw err;
+      });
+  } catch (err) {
+    const error = ensureError(err);
+    logger.error(error);
+    res.status(500).send({ message: error.message });
+  }
+});
+
+/**
+ * Endpoint to check if the user is authenticated.
+ */
+app.get("/checkAuthenticated", isAuthenticated, (req, res) => {
   res.status(200).send("Hello from Firebase!");
 });
 
 /**
- * Route for testing if user is authenticated.
- * @name get/test
- * @function
- * @memberof module:routers/auth~authRouter
- * @inner
- * @param {string} path - Express path
- * @param {callback} middleware - Express middleware.
+ * Endpoint to check if the user is authenticated and has the role of "hacker".
  */
-app.get("/testAuthenticated", isAuthenticated, (req, res) => {
-  res.status(200).send("Hello from Firebase!");
-});
+app.get(
+  "/testAuthenticatedAdmin",
+  isAuthorized({ hasRole: "admin" }),
+  (req, res) => {
+    res.status(200).send("Hello from Firebase!");
+  }
+);
 
 app.get("/testAuthorizedAdmin", isAuthorized({hasRole:'admin'}), (req, res) => {
   res.status(200).send("Hello from Firebase!");

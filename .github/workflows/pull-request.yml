@@ -1,0 +1,32 @@
+name: Deploy to Firebase Hosting on PR
+"on": pull_request
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Install Dependencies
+        working-directory: functions
+        run: yarn install --frozen-lockfile
+      - name: Create Production Build
+        working-directory: functions
+        run: yarn build
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Install Dependencies
+        working-directory: functions
+        run: yarn install --frozen-lockfile
+      - name: Lint
+        working-directory: functions
+        run: yarn lint

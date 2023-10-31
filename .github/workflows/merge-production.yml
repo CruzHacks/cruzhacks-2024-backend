@@ -1,0 +1,55 @@
+name: Deploy to Firebase production on merge
+"on":
+  push:
+    branches:
+      - production
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Install Dependencies
+        working-directory: functions
+        run: yarn install --frozen-lockfile
+      - name: Create Production Build
+        working-directory: functions
+        run: yarn build
+      - name: Archive Production Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: production
+          path: functions/lib
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Install Dependencies
+        working-directory: functions
+        run: yarn install --frozen-lockfile
+      - name: Lint
+        working-directory: functions
+        run: yarn lint
+
+  deploy_production:
+    needs: [build, lint]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Download Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: production
+          path: funtions/lib
+      - name: Deploy to Production
+        run: npx firebase deploy --only functions,firestore,database
+        env:
+          FIREBASE_TOKEN: ${{ secrets.PRODUCTION_FIREBASE_TOKEN }}
