@@ -8,7 +8,7 @@ import { onRequest } from "firebase-functions/v2/https";
 import * as express from "express";
 import * as cors from "cors";
 import bodyParser = require("body-parser");
-import { isAuthenticated } from "../utils/middleware";
+import { isAuthenticated, isAuthorized } from "../utils/middleware";
 
 /**
  * Express router to mount authentication related functions on.
@@ -43,6 +43,10 @@ app.get("/test", (req, res) => {
  * @param {callback} middleware - Express middleware.
  */
 app.get("/testAuthenticated", isAuthenticated, (req, res) => {
+  res.status(200).send("Hello from Firebase!");
+});
+
+app.get("/testAuthorizedAdmin", isAuthorized({hasRole:'admin'}), (req, res) => {
   res.status(200).send("Hello from Firebase!");
 });
 
