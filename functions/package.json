@@ -6,8 +6,8 @@
     "build:watch": "tsc --watch",
     "start": "yarn run build && firebase emulators:start",
     "shell": "yarn run build && firebase functions:shell",
-    "deploy:dev": "firebase -P default deploy --only functions,firestore,database",
-    "deploy:prod": "firebase -P production deploy --only functions,firestore,database",
+    "deploy:dev": "yarn run build && firebase -P default deploy --only functions,firestore,database",
+    "deploy:prod": "yarn run build && firebase -P production deploy --only functions,firestore,database",
     "logs": "firebase functions:log"
   },
   "engines": {

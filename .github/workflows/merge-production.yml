@@ -49,7 +49,11 @@ jobs:
         with:
           name: production
           path: funtions/lib
-      - name: Deploy to Production
-        run: npx firebase deploy --only functions,firestore,database
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+      - name: Deploy to Production Firebase
+        run: npx firebase-tools deploy -P production --only functions,firestore,database --message \"${{ github.event.head_commit.message }}\"
         env:
-          FIREBASE_TOKEN: ${{ secrets.PRODUCTION_FIREBASE_TOKEN }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CRUZHACKS_4A899 }}

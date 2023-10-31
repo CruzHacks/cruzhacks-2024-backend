@@ -25,11 +25,7 @@
         "firebase-debug.log",
         "firebase-debug.*.log"
       ],
-      "codebase": "default",
-      "predeploy": [
-        "yarn --cwd \"$RESOURCE_DIR\" run lint",
-        "yarn --cwd \"$RESOURCE_DIR\" run build"
-      ]
+      "codebase": "default"
     }
   ],
   "firestore": {
