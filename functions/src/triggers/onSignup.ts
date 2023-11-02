@@ -11,7 +11,7 @@ import { onDocumentWritten } from "firebase-functions/v2/firestore";
  */
 export const onSignup = auth.user().onCreate(async (user) => {
   try {
-    const role: UserRole = "hacker";
+    const role: UserRole = "applicant";
 
     await getAuth().setCustomUserClaims(user.uid, { role });
     getFirestore()

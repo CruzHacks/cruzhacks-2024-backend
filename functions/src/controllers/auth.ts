@@ -21,8 +21,8 @@ app.get("/checkRoleSynced", isAuthenticated, async (req, res) => {
       .doc(res.locals.uid)
       .get()
       .then((doc) => {
-        const firestoreRole = doc.data()?.role;
-        const customClaimRole = res.locals.role;
+        const firestoreRole = doc.data()?.role ?? "undefined";
+        const customClaimRole = res.locals.role ?? "undefined";
         if (firestoreRole !== customClaimRole) {
           logger.warn("Roles are out of sync! For user: " + res.locals.uid);
           res
