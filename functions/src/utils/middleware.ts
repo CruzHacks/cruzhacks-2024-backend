@@ -4,6 +4,12 @@ import { logger } from "firebase-functions/v2";
 import { UserRole } from "./schema";
 import ensureError from "./ensureError";
 
+// Cors config for all endpoints
+// TODO: update cors config to only allow certain origins
+export const corsConfig = {
+  origin: false,
+};
+
 /**
  * Middleware to check if the user is authenticated.
  * @param {Request} req The first number.

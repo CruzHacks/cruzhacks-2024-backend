@@ -2,7 +2,7 @@ import { onRequest } from "firebase-functions/v2/https";
 import * as express from "express";
 import * as cors from "cors";
 import bodyParser = require("body-parser");
-import { isAuthenticated } from "../utils/middleware";
+import { corsConfig, isAuthenticated } from "../utils/middleware";
 import { getFirestore } from "firebase-admin/firestore";
 import ensureError from "../utils/ensureError";
 import { logger } from "firebase-functions/v2";
@@ -10,7 +10,7 @@ import { USER_ROLES_COLLECTION } from "../utils/schema";
 
 const app = express();
 app.use(bodyParser.json());
-app.use(cors({ origin: true }));
+app.use(cors(corsConfig));
 
 /**
  * Endpoint to check if the user's role is synced with their custom claims.
