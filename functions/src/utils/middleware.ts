@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import * as admin from "firebase-admin";
 import { logger } from "firebase-functions/v2";
-import { UserRole } from "./roles";
+import { UserRole } from "./schema";
 import ensureError from "./ensureError";
 
 /**

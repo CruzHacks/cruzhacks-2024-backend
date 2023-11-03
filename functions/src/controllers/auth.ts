@@ -2,10 +2,11 @@ import { onRequest } from "firebase-functions/v2/https";
 import * as express from "express";
 import * as cors from "cors";
 import bodyParser = require("body-parser");
-import { isAuthenticated, isAuthorized } from "../utils/middleware";
+import { isAuthenticated } from "../utils/middleware";
 import { getFirestore } from "firebase-admin/firestore";
 import ensureError from "../utils/ensureError";
 import { logger } from "firebase-functions/v2";
+import { USER_ROLES_COLLECTION } from "../utils/schema";
 
 const app = express();
 app.use(bodyParser.json());
@@ -17,7 +18,7 @@ app.use(cors({ origin: true }));
 app.get("/checkRoleSynced", isAuthenticated, async (req, res) => {
   try {
     await getFirestore()
-      .collection("users")
+      .collection(USER_ROLES_COLLECTION)
       .doc(res.locals.uid)
       .get()
       .then((doc) => {
@@ -42,23 +43,5 @@ app.get("/checkRoleSynced", isAuthenticated, async (req, res) => {
     res.status(500).send({ message: error.message });
   }
 });
-
-/**
- * Endpoint to check if the user is authenticated.
- */
-app.get("/checkAuthenticated", isAuthenticated, (req, res) => {
-  res.status(200).send("Hello from Firebase!");
-});
-
-/**
- * Endpoint to check if the user is authenticated and has the role of "hacker".
- */
-app.get(
-  "/testAuthenticatedAdmin",
-  isAuthorized({ hasRole: "admin" }),
-  (req, res) => {
-    res.status(200).send("Hello from Firebase!");
-  }
-);
 
 export const auth = onRequest(app);
