@@ -39,23 +39,23 @@ jobs:
         working-directory: functions
         run: yarn lint
 
-  deploy_development:
-    needs: [build, lint]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Download Artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: development
-          path: funtions/lib
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-      - name: Create Sevice Account key
-        working-directory: ./functions
-        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_CRUZHACKS_2024_DEVELOPME_D58C3  }}' > $HOME/gcloud.json
-      - name: Deploy Cloud Functions
-        working-directory: ./functions
-        run: export GOOGLE_APPLICATION_CREDENTIALS=$HOME/gcloud.json && npx firebase-tools -P default deploy --only functions,firestore,database --json
+  # deploy_development:
+  #   needs: [build, lint]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Download Artifact
+  #       uses: actions/download-artifact@v2
+  #       with:
+  #         name: development
+  #         path: funtions/lib
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: 18
+  #     - name: Create Sevice Account key
+  #       working-directory: ./functions
+  #       run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_CRUZHACKS_2024_DEVELOPME_D58C3  }}' > $HOME/gcloud.json
+  #     - name: Deploy Cloud Functions
+  #       working-directory: ./functions
+  #       run: export GOOGLE_APPLICATION_CREDENTIALS=$HOME/gcloud.json && npx firebase-tools -P default deploy --only functions,firestore,database --json

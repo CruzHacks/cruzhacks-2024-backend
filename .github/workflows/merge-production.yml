@@ -39,21 +39,21 @@ jobs:
         working-directory: functions
         run: yarn lint
 
-  deploy_production:
-    needs: [build, lint]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Download Artifact
-        uses: actions/download-artifact@v2
-        with:
-          name: production
-          path: funtions/lib
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
-      - name: Deploy to Production Firebase
-        run: npx firebase-tools deploy -P production --only functions,firestore,database --message \"${{ github.event.head_commit.message }}\"
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CRUZHACKS_4A899 }}
+  # deploy_production:
+  #   needs: [build, lint]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Download Artifact
+  #       uses: actions/download-artifact@v2
+  #       with:
+  #         name: production
+  #         path: funtions/lib
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: 18
+  #     - name: Deploy to Production Firebase
+  #       run: npx firebase-tools deploy -P production --only functions,firestore,database --message \"${{ github.event.head_commit.message }}\"
+  #       env:
+  #         GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_CRUZHACKS_4A899 }}
