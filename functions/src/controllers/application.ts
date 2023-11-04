@@ -28,7 +28,7 @@ app.post("/", isAuthenticated, async (req, res) => {
 
     await getFirestore()
       .collection(USER_APPLICATION_COLLECTION)
-      .doc(res.locals.uid)
+      .doc(res.locals.email)
       .set(application, { merge: false });
 
     getAuth()

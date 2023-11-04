@@ -19,7 +19,7 @@ app.get("/checkRoleSynced", isAuthenticated, async (req, res) => {
   try {
     await getFirestore()
       .collection(USER_ROLES_COLLECTION)
-      .doc(res.locals.uid)
+      .doc(res.locals.email)
       .get()
       .then((doc) => {
         const firestoreRole = doc.data()?.role ?? "undefined";

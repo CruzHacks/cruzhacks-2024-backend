@@ -4,6 +4,7 @@ import { auth, logger } from "firebase-functions/v1";
 import {
   USER_ROLES_COLLECTION,
   UserRole,
+  UserRoles,
   UserRolesSchema,
 } from "../utils/schema";
 import ensureError from "../utils/ensureError";
@@ -33,7 +34,7 @@ export const onSignup = auth.user().onCreate(async (user) => {
 
     // Create the user role document
     getFirestore()
-      .doc(`${USER_ROLES_COLLECTION}/${user.uid}`)
+      .doc(`${USER_ROLES_COLLECTION}/${user.email}`)
       .set(userRoleDoc, { merge: true });
   } catch (err) {
     if (err instanceof ZodError) {
@@ -51,7 +52,7 @@ export const onSignup = auth.user().onCreate(async (user) => {
  * validates UserRolesSchema to default if invalid.
  */
 export const mirrorCustomClaims = onDocumentWritten(
-  `${USER_ROLES_COLLECTION}/{userId}`,
+  `${USER_ROLES_COLLECTION}/{email}`,
   async (event) => {
     const beforeData = event.data?.before.data() || {};
     const afterData = event.data?.after.data() || {};
@@ -72,17 +73,22 @@ export const mirrorCustomClaims = onDocumentWritten(
         "Undoing firestore update on",
         USER_ROLES_COLLECTION,
         "/",
-        event.params.userId
+        event.params.email
       );
       await event.data?.after.ref.update(beforeData);
       return;
     }
 
-    const uid = event.params?.userId;
-    logger.info(`Updating user claims for ${uid}: ${newRole}`);
-    await getAuth().setCustomUserClaims(uid, { role: newRole });
-
-    logger.info("Updating document timestamp");
+    // Get uid by email
+    const user = await getAuth()
+      .getUserByEmail(event.params?.email)
+      .catch((err) => {
+        logger.error("Error fetching user:", err);
+        logger.info("Undoing firestore update on", USER_ROLES_COLLECTION, "/");
+        event.data?.after.ref.update(beforeData);
+      });
+    if (!user) return;
+    const { uid } = user;
 
     // Set role in Firestore to allow updates in dashboard
     const _userRoleDoc: UserRolesSchema = {
@@ -93,21 +99,32 @@ export const mirrorCustomClaims = onDocumentWritten(
     // Validate the new UserRoleDoc
     const userRoleDocParse = UserRolesSchema.safeParse(_userRoleDoc);
 
+    // If the new document is invalid, restore to default
     if (!userRoleDocParse.success) {
       logger.error(
         "User Role Doc invalid shape:",
         JSON.stringify(userRoleDocParse.error.issues)
       );
       logger.info("Restoring to default");
+      event.data?.after.ref.update({
+        role: UserRoles[0],
+        _last_committed: FieldValue.serverTimestamp(),
+      });
+      return;
     }
 
-    // If the document is invalid, restore to default
+    // If the new document is valid, update the custom claim
     const userRoleDoc = (userRoleDocParse as SafeParseSuccess<UserRolesSchema>)
-      .data || {
-      role: "applicant",
-      _last_committed: FieldValue.serverTimestamp(),
-    };
+      .data;
 
-    await event.data?.after.ref.update(userRoleDoc);
+    logger.info(
+      "Updating Custom Claim for",
+      event.params?.email,
+      `(UID:${uid}) to ${userRoleDoc.role}`
+    );
+
+    await getAuth().setCustomUserClaims(uid, { role: userRoleDoc.role });
+    logger.info("Updating document timestamp");
+    event.data?.after.ref.update(userRoleDoc);
   }
 );

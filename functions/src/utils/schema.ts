@@ -8,7 +8,7 @@ import validator from "validator";
 /**
  * Firestore collection that stores user's role
  *
- * $USER_ROLES_COLLECTION/:userId
+ * $USER_ROLES_COLLECTION/:email
  */
 export const USER_ROLES_COLLECTION = "user_roles";
 
@@ -26,7 +26,7 @@ export type UserRolesSchema = z.infer<typeof UserRolesSchema>;
 /**
  * Firestore collection that stores user's applications
  *
- * $USER_DATA_COLLECTION/:userId
+ * $USER_DATA_COLLECTION/:email
  */
 export const USER_APPLICATION_COLLECTION = "applications";
 
