@@ -7,7 +7,7 @@ import ensureError from "./ensureError";
 // Cors config for all endpoints
 // TODO: update cors config to only allow certain origins
 export const corsConfig = {
-  origin: false,
+  origin: "*",
 };
 
 /**
@@ -61,7 +61,7 @@ export async function isAuthenticated(
  * @return {Function} middleware function
  */
 export function isAuthorized(opts: {
-  hasRole: UserRole;
+  hasRole: UserRole[];
   allowSameUser?: boolean;
 }) {
   return (req: Request, res: Response, next: () => void) => {
