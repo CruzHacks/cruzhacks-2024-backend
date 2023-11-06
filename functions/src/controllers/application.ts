@@ -5,6 +5,7 @@ import bodyParser = require("body-parser");
 import { corsConfig, isAuthenticated } from "../utils/middleware";
 import { getFirestore } from "firebase-admin/firestore";
 import {
+  APIResponse,
   ApplicationSchema,
   USER_APPLICATION_COLLECTION,
 } from "../utils/schema";
@@ -43,24 +44,29 @@ app.post("/", isAuthenticated, async (req, res) => {
         throw new Error(err.message);
       });
 
-    res.status(200).send({ message: "Application saved successfully" });
+    res.status(200).send({
+      data: {
+        message: "Application saved successfully",
+      },
+    } as APIResponse);
   } catch (err) {
     if (err instanceof ZodError) {
       logger.error(
         "User Application invalid shape:",
         JSON.stringify(err.issues)
       );
-      res
-        .status(400)
-        .send({ message: "Invalid Application Data", issues: err.issues });
+      res.status(400).send({
+        error: "Invalid Application Data",
+        data: { issues: err.issues },
+      } as APIResponse);
       return;
     }
 
     const error = ensureError(err);
     logger.error(error);
     res.status(500).send({
-      message: "Internal server error, could not complete request.",
-    });
+      error: "Internal server error, could not complete request.",
+    } as APIResponse);
   }
 });
 

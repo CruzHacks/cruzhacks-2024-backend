@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import * as admin from "firebase-admin";
 import { logger } from "firebase-functions/v2";
-import { UserRole } from "./schema";
+import { APIResponse, UserRole } from "./schema";
 import ensureError from "./ensureError";
 
 // Cors config for all endpoints
@@ -23,15 +23,17 @@ export async function isAuthenticated(
 ) {
   const { authorization } = req.headers;
 
-  if (!authorization) return res.status(401).send({ message: "Unauthorized" });
+  if (!authorization) {
+    return res.status(401).send({ error: "Unauthorized" } as APIResponse);
+  }
 
   if (!authorization.startsWith("Bearer")) {
-    return res.status(401).send({ message: "Unauthorized" });
+    return res.status(401).send({ error: "Unauthorized" } as APIResponse);
   }
 
   const split = authorization.split("Bearer ");
   if (split.length !== 2) {
-    return res.status(401).send({ message: "Unauthorized" });
+    return res.status(401).send({ error: "Unauthorized" } as APIResponse);
   }
 
   const token = split[1];
@@ -51,7 +53,7 @@ export async function isAuthenticated(
     const error = ensureError(e);
     logger.error(error.message);
 
-    return res.status(401).send({ message: "Unauthorized" });
+    return res.status(401).send({ error: "Unauthorized" } as APIResponse);
   }
 }
 
@@ -70,9 +72,15 @@ export function isAuthorized(opts: {
 
     if (email === "dev@cruzhacks.com") return next();
     if (opts.allowSameUser && id && uid === id) return next();
-    if (!role) return res.status(403).send();
+    if (!role) {
+      return res.status(403).send({
+        error: "Forbidden, missing required authorization role",
+      } as APIResponse);
+    }
     if (opts.hasRole.includes(role)) return next();
 
-    return res.status(403).send();
+    return res.status(403).send({
+      error: "Forbidden, missing required authorization role",
+    } as APIResponse);
   };
 }

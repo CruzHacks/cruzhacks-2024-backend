@@ -5,6 +5,15 @@
 
 import { z } from "zod";
 import validator from "validator";
+
+// Server responses should always adhere to the following schema
+export const APIResponseSchema = z.object({
+  error: z.string().optional(),
+  data: z.any().optional(),
+});
+
+export type APIResponse = z.infer<typeof APIResponseSchema>;
+
 /**
  * Firestore collection that stores user's role
  *

@@ -6,7 +6,7 @@ import { corsConfig, isAuthenticated, isAuthorized } from "../utils/middleware";
 import { getFirestore } from "firebase-admin/firestore";
 import ensureError from "../utils/ensureError";
 import { logger } from "firebase-functions/v2";
-import { USER_ROLES_COLLECTION } from "../utils/schema";
+import { APIResponse, USER_ROLES_COLLECTION } from "../utils/schema";
 import { getAuth } from "firebase-admin/auth";
 
 const app = express();
@@ -25,14 +25,22 @@ app.get("/checkRoleSynced", isAuthenticated, async (req, res) => {
       .then((doc) => {
         const firestoreRole = doc.data()?.role ?? "undefined";
         const customClaimRole = res.locals.role ?? "undefined";
+
         if (firestoreRole !== customClaimRole) {
           logger.warn("Roles are out of sync! For user: " + res.locals.uid);
-          res
-            .status(200)
-            .send({ customClaimRole, firestoreRole, synced: false });
+          res.status(200).send({
+            data: {
+              customClaimRole,
+              firestoreRole,
+              synced: false,
+            },
+          } as APIResponse);
           return;
         }
-        res.status(200).send({ customClaimRole, firestoreRole, synced: true });
+
+        res.status(200).send({
+          data: { customClaimRole, firestoreRole, synced: true },
+        } as APIResponse);
         return;
       })
       .catch((err) => {
@@ -41,7 +49,7 @@ app.get("/checkRoleSynced", isAuthenticated, async (req, res) => {
   } catch (err) {
     const error = ensureError(err);
     logger.error(error);
-    res.status(500).send({ message: error.message });
+    res.status(500).send({ error: error.message } as APIResponse);
   }
 });
 
@@ -56,11 +64,8 @@ app.get(
     try {
       const pageToken = req.query.pageToken as string;
 
-      logger.info(`pageToken ${pageToken}`);
-      logger.info(`pageToken length: ${pageToken.length}`);
-
       await getAuth()
-        .listUsers(50, pageToken !== "undefined" ? pageToken : undefined)
+        .listUsers(50, pageToken)
         .then((listUsersResult) => {
           const users = listUsersResult.users.map((user) => {
             return {
@@ -71,15 +76,17 @@ app.get(
             };
           });
           res.status(200).send({
-            users,
-            nextPageToken: listUsersResult.pageToken,
-          });
+            data: {
+              users,
+              nextPageToken: listUsersResult.pageToken,
+            },
+          } as APIResponse);
           return;
         });
     } catch (err) {
       const error = ensureError(err);
       logger.error(error);
-      res.status(500).send({ message: error.message });
+      res.status(500).send({ error: error.message } as APIResponse);
     }
   }
 );
