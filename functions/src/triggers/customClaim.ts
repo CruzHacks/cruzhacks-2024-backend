@@ -1,12 +1,7 @@
 import { getAuth } from "firebase-admin/auth";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { auth, logger } from "firebase-functions/v1";
-import {
-  USER_ROLES_COLLECTION,
-  UserRole,
-  UserRoles,
-  UserRolesSchema,
-} from "../utils/schema";
+import { UserRole, UserRoles, UserRolesSchema } from "../utils/schema";
 import ensureError from "../utils/ensureError";
 import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { SafeParseSuccess, ZodError } from "zod";
@@ -32,9 +27,14 @@ export const onSignup = auth.user().onCreate(async (user) => {
     // Validate the user role document (throws error if invalid)
     const userRoleDoc = UserRolesSchema.parse(_userRoleDoc);
 
+    if (!user.email) throw new Error("No email provided");
+
     // Create the user role document
-    getFirestore()
-      .doc(`${USER_ROLES_COLLECTION}/${user.email}`)
+    await getFirestore()
+      .collection("users")
+      .doc(user.email)
+      .collection("user_items")
+      .doc("role")
       .set(userRoleDoc, { merge: true });
   } catch (err) {
     if (err instanceof ZodError) {
@@ -52,7 +52,7 @@ export const onSignup = auth.user().onCreate(async (user) => {
  * validates UserRolesSchema to default if invalid.
  */
 export const mirrorCustomClaims = onDocumentWritten(
-  `${USER_ROLES_COLLECTION}/{email}`,
+  "users/{email}/user_items/role",
   async (event) => {
     const beforeData = event.data?.before.data() || {};
     const afterData = event.data?.after.data() || {};
@@ -70,10 +70,9 @@ export const mirrorCustomClaims = onDocumentWritten(
         `User claims payload too large: ${newRole.length} characters`
       );
       logger.info(
-        "Undoing firestore update on",
-        USER_ROLES_COLLECTION,
-        "/",
-        event.params.email
+        "Undoing firestore update on: users/",
+        event.params.email,
+        "/user_items/role"
       );
       await event.data?.after.ref.update(beforeData);
       return;
@@ -84,7 +83,11 @@ export const mirrorCustomClaims = onDocumentWritten(
       .getUserByEmail(event.params?.email)
       .catch((err) => {
         logger.error("Error fetching user:", err);
-        logger.info("Undoing firestore update on", USER_ROLES_COLLECTION, "/");
+        logger.info(
+          "Undoing firestore update on: users/",
+          event.params.email,
+          "/user_items/role"
+        );
         event.data?.after.ref.update(beforeData);
       });
     if (!user) return;

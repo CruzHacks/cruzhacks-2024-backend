@@ -21,24 +21,24 @@ export async function isAuthenticated(
   res: Response,
   next: () => void
 ) {
-  const { authorization } = req.headers;
-
-  if (!authorization) {
-    return res.status(401).send({ error: "Unauthorized" } as APIResponse);
-  }
-
-  if (!authorization.startsWith("Bearer")) {
-    return res.status(401).send({ error: "Unauthorized" } as APIResponse);
-  }
-
-  const split = authorization.split("Bearer ");
-  if (split.length !== 2) {
-    return res.status(401).send({ error: "Unauthorized" } as APIResponse);
-  }
-
-  const token = split[1];
-
   try {
+    const { authorization } = req.headers;
+
+    if (!authorization) {
+      throw new Error("no authroization header");
+    }
+
+    if (!authorization.startsWith("Bearer")) {
+      throw new Error("'Bearer' not present in authorization header");
+    }
+
+    const split = authorization.split("Bearer ");
+    if (split.length !== 2) {
+      throw new Error("Missing token in authorization header");
+    }
+
+    const token = split[1];
+
     const decodedToken: admin.auth.DecodedIdToken = await admin
       .auth()
       .verifyIdToken(token);

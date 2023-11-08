@@ -6,7 +6,7 @@ import { corsConfig, isAuthenticated, isAuthorized } from "../utils/middleware";
 import { getFirestore } from "firebase-admin/firestore";
 import ensureError from "../utils/ensureError";
 import { logger } from "firebase-functions/v2";
-import { APIResponse, USER_ROLES_COLLECTION } from "../utils/schema";
+import { APIResponse } from "../utils/schema";
 import { getAuth } from "firebase-admin/auth";
 
 const app = express();
@@ -19,8 +19,7 @@ app.use(cors(corsConfig));
 app.get("/checkRoleSynced", isAuthenticated, async (req, res) => {
   try {
     await getFirestore()
-      .collection(USER_ROLES_COLLECTION)
-      .doc(res.locals.email)
+      .doc(`users/${res.locals.email}/user_items/role`)
       .get()
       .then((doc) => {
         const firestoreRole = doc.data()?.role ?? "undefined";
@@ -28,18 +27,14 @@ app.get("/checkRoleSynced", isAuthenticated, async (req, res) => {
 
         if (firestoreRole !== customClaimRole) {
           logger.warn("Roles are out of sync! For user: " + res.locals.uid);
-          res.status(200).send({
-            data: {
-              customClaimRole,
-              firestoreRole,
-              synced: false,
-            },
-          } as APIResponse);
-          return;
         }
 
         res.status(200).send({
-          data: { customClaimRole, firestoreRole, synced: true },
+          data: {
+            customClaimRole,
+            firestoreRole,
+            synced: customClaimRole === firestoreRole,
+          },
         } as APIResponse);
         return;
       })
