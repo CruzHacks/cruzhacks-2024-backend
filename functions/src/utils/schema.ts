@@ -33,15 +33,36 @@ export type UserRolesSchema = z.infer<typeof UserRolesSchema>;
  * Contains a subcollection called sections wich contains the various sections
  * of the application.
  */
+export const ApplicationStatuses = [
+  "draft",
+  "submitted",
+  "accepted",
+  "rejected",
+] as const;
+export type ApplicationStatus = (typeof ApplicationStatuses)[number];
 
-// Section 1 - Demographics
-export const AppDemographicsSchema = z.object({
-  first_name: z.string().min(1, "First name must be at least 1 character."),
-  last_name: z.string(),
+export const ApplicationSchema = z.object({
+  status: z.enum(ApplicationStatuses),
+  email: z.string(),
+  _submitted: z.any(),
+  _last_committed: z.any(),
+});
+export type ApplicationSchema = z.infer<typeof ApplicationSchema>;
+
+// Section 0 - User Information
+export const AppUserSchema = z.object({
+  email: z.string(),
   phone_number: z
     .string()
     .refine(validator.isMobilePhone, "Invalid phone number."),
+  password: z.string(),
+  first_name: z.string().min(1, "First name must be at least 1 character."),
+  last_name: z.string(),
+});
+export type AppUserSchema = z.infer<typeof AppUserSchema>;
 
+// Section 1 - Demographics
+export const AppDemographicsSchema = z.object({
   age: z
     .number()
     .min(12, "Must be at least 12 years old.")
@@ -119,14 +140,13 @@ export const AppSocialsSchema = z.object({
 });
 export type AppSocialsSchema = z.infer<typeof AppSocialsSchema>;
 
-// This is the schema for the entire application consumed from the frontend, in
-// reality it is stored in firestore in subcollections as specified above.
-export const ApplicationSchema = z.object({
-  email: z.string(),
-  password: z.string(),
+// Application Transfer Schema, used for recieving application data from the
+// client
+export const ApplicationSchemaDto = z.object({
+  user: AppUserSchema.optional(),
   demographics: AppDemographicsSchema,
   short_responses: AppShortResponseSchema,
   logistics: AppLogisticsSchema,
   socials: AppSocialsSchema,
 });
-export type ApplicationSchema = z.infer<typeof ApplicationSchema>;
+export type ApplicationSchemaDto = z.infer<typeof ApplicationSchemaDto>;

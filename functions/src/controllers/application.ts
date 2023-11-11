@@ -4,7 +4,11 @@ import * as cors from "cors";
 import bodyParser = require("body-parser");
 import { corsConfig, isAuthenticated } from "../utils/middleware";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
-import { APIResponse, ApplicationSchema } from "../utils/schema";
+import {
+  APIResponse,
+  ApplicationSchema,
+  ApplicationSchemaDto,
+} from "../utils/schema";
 import { ZodError } from "zod";
 import { logger } from "firebase-functions/v2";
 import ensureError from "../utils/ensureError";
@@ -19,16 +23,18 @@ app.use(cors(corsConfig));
  */
 app.post("/unauthenticated", async (req, res) => {
   try {
-    const application = ApplicationSchema.parse(req.body);
-    const email = application.email;
+    const application = ApplicationSchemaDto.parse(req.body);
+    if (!application.user) throw new Error("No user provided");
+
+    const email = application.user.email;
 
     await getAuth()
       .createUser({
-        email: application.email,
-        password: application.password,
-        phoneNumber: `+1 ${application.demographics.phone_number}`,
+        email: email,
+        password: application.user.password,
+        phoneNumber: `+1 ${application.user.phone_number}`,
         // eslint-disable-next-line
-        displayName: `${application.demographics.first_name} ${application.demographics.last_name}`,
+        displayName: `${application.user.first_name} ${application.user.last_name}`,
       })
       .then((userRecord) => {
         logger.info(
@@ -40,14 +46,19 @@ app.post("/unauthenticated", async (req, res) => {
         throw new Error(err.message);
       });
 
+    const appDoc: ApplicationSchema = {
+      status: "submitted",
+      email: email,
+      _submitted: FieldValue.serverTimestamp(),
+      _last_committed: FieldValue.serverTimestamp(),
+    };
+
     await getFirestore()
       .collection("users")
       .doc(email)
       .collection("user_items")
       .doc("application")
-      .set({
-        _last_committed: FieldValue.serverTimestamp(),
-      });
+      .set(appDoc);
 
     await getFirestore().doc(`users/${email}`).set({
       pronouons: application.demographics.pronouns,
@@ -108,17 +119,22 @@ app.post("/unauthenticated", async (req, res) => {
  */
 app.post("/authenticated", isAuthenticated, async (req, res) => {
   try {
-    const application = ApplicationSchema.parse(req.body);
+    const application = ApplicationSchemaDto.parse(req.body);
     const email = res.locals.email;
+
+    const appDoc: ApplicationSchema = {
+      status: "submitted",
+      email: email,
+      _submitted: FieldValue.serverTimestamp(),
+      _last_committed: FieldValue.serverTimestamp(),
+    };
 
     await getFirestore()
       .collection("users")
       .doc(email)
       .collection("user_items")
       .doc("application")
-      .set({
-        _last_committed: FieldValue.serverTimestamp(),
-      });
+      .set(appDoc);
 
     await getFirestore().doc(`users/${email}`).set({
       pronouons: application.demographics.pronouns,
@@ -146,21 +162,23 @@ app.post("/authenticated", isAuthenticated, async (req, res) => {
       .doc("socials")
       .set(application.socials);
 
-    getAuth()
-      .updateUser(res.locals.uid, {
-        phoneNumber: `+1 ${application.demographics.phone_number}`,
-        // eslint-disable-next-line
-        displayName: `${application.demographics.first_name} ${application.demographics.last_name}`,
-      })
-      .then((userRecord) => {
-        logger.info(
-          "Successfully updated phone number and display name for user",
-          userRecord.email
-        );
-      })
-      .catch((err) => {
-        throw new Error(err.message);
-      });
+    if (application.user) {
+      getAuth()
+        .updateUser(res.locals.uid, {
+          phoneNumber: `+1 ${application.user.phone_number}`,
+          // eslint-disable-next-line
+          displayName: `${application.user.first_name} ${application.user.last_name}`,
+        })
+        .then((userRecord) => {
+          logger.info(
+            "Successfully updated phone number and display name for user",
+            userRecord.email
+          );
+        })
+        .catch((err) => {
+          throw new Error(err.message);
+        });
+    }
 
     res.status(200).send({
       data: {
