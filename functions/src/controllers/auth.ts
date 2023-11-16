@@ -14,6 +14,50 @@ app.use(bodyParser.json());
 app.use(cors(corsConfig));
 
 /**
+ * Endpoint to check if a user email exists.
+ */
+app.get("/emailTaken", async (req, res) => {
+  try {
+    const email = req.query.email as string;
+    await getAuth()
+      .getUserByEmail(email)
+      .then(() => {
+        res.status(200).send({ data: { exists: true } } as APIResponse);
+      })
+      .catch(() => {
+        res.status(200).send({ data: { exists: false } } as APIResponse);
+      });
+  } catch (err) {
+    const error = ensureError(err);
+    logger.error(error);
+    res.status(500).send({ error: error.message } as APIResponse);
+  }
+});
+
+/**
+ * Endpoint to check if a user phone number exists.
+ */
+app.get("/phoneNumberTaken", async (req, res) => {
+  try {
+    const phoneNumber = req.query.phoneNumber as string;
+    logger.debug("Checking if phone number exists: " + phoneNumber);
+
+    await getAuth()
+      .getUserByPhoneNumber(phoneNumber)
+      .then(() => {
+        res.status(200).send({ data: { exists: true } } as APIResponse);
+      })
+      .catch(() => {
+        res.status(200).send({ data: { exists: false } } as APIResponse);
+      });
+  } catch (err) {
+    const error = ensureError(err);
+    logger.error(error);
+    res.status(500).send({ error: error.message } as APIResponse);
+  }
+});
+
+/**
  * Endpoint to check if the user's role is synced with their custom claims.
  */
 app.get("/checkRoleSynced", isAuthenticated, async (req, res) => {

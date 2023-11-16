@@ -62,7 +62,6 @@ app.post("/unauthenticated", async (req, res) => {
 
     await getFirestore().doc(`users/${email}`).set({
       pronouons: application.demographics.pronouns,
-      first_hackathon: application.demographics.first_hackathon,
       _last_committed: FieldValue.serverTimestamp(),
     });
 
@@ -73,8 +72,8 @@ app.post("/unauthenticated", async (req, res) => {
 
     await getFirestore()
       .collection(`users/${email}/user_items/application/sections`)
-      .doc("short_responses")
-      .set(application.short_responses);
+      .doc("short_response")
+      .set(application.short_response);
 
     await getFirestore()
       .collection(`users/${email}/user_items/application/sections`)
@@ -108,6 +107,9 @@ app.post("/unauthenticated", async (req, res) => {
     logger.error(error);
     res.status(500).send({
       error: "Internal server error, could not complete request.",
+      data: {
+        message: error.message,
+      },
     } as APIResponse);
   }
 });
@@ -138,7 +140,6 @@ app.post("/authenticated", isAuthenticated, async (req, res) => {
 
     await getFirestore().doc(`users/${email}`).set({
       pronouons: application.demographics.pronouns,
-      first_hackathon: application.demographics.first_hackathon,
       _last_committed: FieldValue.serverTimestamp(),
     });
 
@@ -149,8 +150,8 @@ app.post("/authenticated", isAuthenticated, async (req, res) => {
 
     await getFirestore()
       .collection(`users/${email}/user_items/application/sections`)
-      .doc("short_responses")
-      .set(application.short_responses);
+      .doc("short_response")
+      .set(application.short_response);
 
     await getFirestore()
       .collection(`users/${email}/user_items/application/sections`)
