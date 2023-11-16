@@ -93,7 +93,6 @@ export const AppDemographicsSchema = z.object({
   hackathon_experience: z.string().min(1, "Please Answer"),
   tech_experience: z.string().max(1500, "Character limit exceeded."),
 
-  // ethnic_background: z.string().array(),
   ethnic_background: z.string(),
 
   pronouns: z.string(),
