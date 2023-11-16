@@ -68,22 +68,22 @@ app.post("/unauthenticated", async (req, res) => {
     await getFirestore()
       .collection(`users/${email}/user_items/application/sections`)
       .doc("demographics")
-      .set(application.demographics);
+      .set({ email, ...application.demographics });
 
     await getFirestore()
       .collection(`users/${email}/user_items/application/sections`)
       .doc("short_response")
-      .set(application.short_response);
+      .set({ email, ...application.short_response });
 
     await getFirestore()
       .collection(`users/${email}/user_items/application/sections`)
       .doc("logistics")
-      .set(application.logistics);
+      .set({ email, ...application.logistics });
 
     await getFirestore()
       .collection(`users/${email}/user_items/application/sections`)
       .doc("socials")
-      .set(application.socials);
+      .set({ email, ...application.socials });
 
     res.status(200).send({
       data: {
