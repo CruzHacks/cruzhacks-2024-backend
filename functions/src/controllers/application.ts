@@ -26,7 +26,7 @@ app.post("/unauthenticated", async (req, res) => {
     const application = ApplicationSchemaDto.parse(req.body);
     if (!application.user) throw new Error("No user provided");
 
-    const email = application.user.email;
+    let email = application.user.email;
 
     await getAuth()
       .createUser({
@@ -37,10 +37,10 @@ app.post("/unauthenticated", async (req, res) => {
         displayName: `${application.user.first_name} ${application.user.last_name}`,
       })
       .then((userRecord) => {
-        logger.info(
-          "Successfully created user from application",
-          userRecord.email
-        );
+        if (userRecord && userRecord.email) {
+          email = userRecord.email;
+        }
+        logger.info("Successfully created user from application", email);
       })
       .catch((err) => {
         throw new Error(err.message);
