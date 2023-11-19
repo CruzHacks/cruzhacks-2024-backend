@@ -94,6 +94,10 @@ app.get("/checkRoleSynced", isAuthenticated, async (req, res) => {
 
 /**
  * Endpoint to retrieve list of users with role.
+ *
+ * NOTE: This endpoint only returns up to 1000 users sorted by UID. To fix this
+ * issue, we can use pagination. However, this causes a problem for grabbing the
+ * correct pronouns from the user's collection group.
  */
 app.get(
   "/users",
@@ -101,9 +105,6 @@ app.get(
   isAuthorized({ hasRole: ["admin"] }),
   async (req, res) => {
     try {
-      // const pageToken = req.query.pageToken as string;
-      // NOTE: Page token will not work if pronouns grabbed
-
       let pronounsDict: { [email: string]: string } = {};
       await getFirestore()
         .collectionGroup("users")
@@ -120,7 +121,6 @@ app.get(
         });
 
       await getAuth()
-        // .listUsers(1000, pageToken)
         .listUsers(1000)
         .then((listUsersResult) => {
           const users = listUsersResult.users.map((user) => {
@@ -138,7 +138,6 @@ app.get(
           res.status(200).send({
             data: {
               users,
-              // nextPageToken: listUsersResult.pageToken,
             },
           } as APIResponse);
           return;
