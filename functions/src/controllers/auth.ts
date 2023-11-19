@@ -101,23 +101,44 @@ app.get(
   isAuthorized({ hasRole: ["admin"] }),
   async (req, res) => {
     try {
-      const pageToken = req.query.pageToken as string;
+      // const pageToken = req.query.pageToken as string;
+      // NOTE: Page token will not work if pronouns grabbed
+
+      let pronounsDict: { [email: string]: string } = {};
+      await getFirestore()
+        .collectionGroup("users")
+        .get()
+        .then((querySnapshot) => {
+          pronounsDict = querySnapshot.docs.reduce((acc, doc) => {
+            if (!doc.data().pronouons) return acc;
+
+            return {
+              ...acc,
+              [doc.id]: doc.data().pronouons,
+            };
+          }, {});
+        });
 
       await getAuth()
-        .listUsers(50, pageToken)
+        // .listUsers(1000, pageToken)
+        .listUsers(1000)
         .then((listUsersResult) => {
           const users = listUsersResult.users.map((user) => {
             return {
               uid: user.uid,
               displayName: user.displayName,
               email: user.email,
+              pronouns:
+                user.email && user.email in pronounsDict ?
+                  pronounsDict[user.email] :
+                  undefined,
               role: user.customClaims?.role,
             };
           });
           res.status(200).send({
             data: {
               users,
-              nextPageToken: listUsersResult.pageToken,
+              // nextPageToken: listUsersResult.pageToken,
             },
           } as APIResponse);
           return;
