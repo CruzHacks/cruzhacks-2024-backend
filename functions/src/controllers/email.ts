@@ -56,7 +56,7 @@ app.post("/subscribe", async (req, res) => {
     const mcResponseJson = await mcResponse.json();
 
     if (mcResponseJson.title == "Member Exists") {
-      res.status(403).json({ error: "Member Exists" } as APIResponse);
+      res.status(403).json({ error: "User already subscribed" } as APIResponse);
       return;
     }
 
