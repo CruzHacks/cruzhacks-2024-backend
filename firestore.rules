@@ -2,37 +2,8 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Secure the 'users' collection
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      // This allows users to read and write their own user document
-      // Modify conditions as needed, like allowing admins additional privileges
+    match /{document=**} {
+      allow read, write: if request.auth != null;
     }
-
-    // Secure the 'user_items' subcollection
-    match /users/{userId}/user_items/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      // Similar to the 'users' collection, adjust permissions as required
-    }
-
-    // Secure the 'application' document and 'sections' subcollection
-    match /users/{userId}/user_items/application {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      // Modify conditions as needed to restrict access to specific users or roles
-    }
-    match /users/{userId}/user_items/application/sections/{sectionId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      // Adjust conditions based on specific requirements for each section
-    }
-
-    // Secure the 'user_role' document
-    match /users/{userId}/user_items/role {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      // Modify conditions to restrict access to only authorized users or roles
-    }
-
-    // Add more rules as needed for other collections and documents
-
   }
 }
