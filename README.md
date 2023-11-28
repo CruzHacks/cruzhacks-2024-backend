@@ -17,11 +17,16 @@ purely frontend code.
 ## How to Run
 
 1. Clone this repository
+2. Install [nvm](https://github.com/nvm-sh/nvm) to manage versions of node 
+3. Run `nvm install 18` and `nvm use 18` to use version 18 of node
 2. Install [firebase-tools](https://www.npmjs.com/package/firebase-tools) to
    emulate backend and run deploys
-3. Navigate to the root of the repository and run `yarn` to install all
+3. Navigate to the functions directory and run `yarn` to install all
    the dependencies
-4. Run `yarn start` to start the firebase emulators
+4. Run `yarn build` to transpile the typescript into the lib folder
+5. Use `firebase login` to gain access to firebase, and `firebase use default` to set the correct alias
+6. Run `yarn start` to start the firebase emulators!
+7. Open a new terminal tab/window in the functions directory and run `yarn build:watch` to watch for changes from the typescript to javascript compilation
 
 ## Available Scripts
 
