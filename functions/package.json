@@ -4,8 +4,8 @@
     "lint": "eslint --ext .js,.ts .",
     "build": "tsc",
     "build:watch": "tsc --watch",
-    "start": "yarn run build && firebase emulators:start",
-    "shell": "yarn run build && firebase functions:shell",
+    "start": "yarn run build:watch & firebase emulators:start",
+    "shell": "yarn run build:watch & firebase functions:shell",
     "deploy:dev": "yarn run build && firebase -P default deploy --only functions,firestore,database",
     "deploy:prod": "yarn run build && firebase -P production deploy --only functions,firestore,database",
     "logs": "firebase functions:log"
