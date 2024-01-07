@@ -44,6 +44,7 @@ export type ApplicationStatus = (typeof ApplicationStatuses)[number];
 
 export const ApplicationSchema = z.object({
   status: z.enum(ApplicationStatuses),
+  rsvp: z.boolean().optional(),
   email: z.string().email("Invalid email address."),
   _submitted: z.any(),
   _last_committed: z.any(),
