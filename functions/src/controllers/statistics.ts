@@ -5,17 +5,163 @@ import bodyParser = require("body-parser");
 import { corsConfig } from "../utils/middleware";
 import ensureError from "../utils/ensureError";
 import { logger } from "firebase-functions/v2";
-import { getFirestore } from "firebase-admin/firestore";
+import { FieldValue, Timestamp, getFirestore } from "firebase-admin/firestore";
 import { APIResponse } from "../utils/schema";
 
 const app = express();
 app.use(bodyParser.json());
 app.use(cors(corsConfig));
 
-type StatisticsDict = {
-  [key: string]: {
-    [key: string | number]: number;
-  };
+type Dict<Type> = {
+  [key: string | number]: Type;
+};
+
+/**
+ * Convert a Firebase timestamp to a date string in format mm-dd-yyyy
+ * @param {Timestamp} timestamp Firebase timestamp
+ * @return {string} date string in format mm-dd-yyyy
+ */
+const timestampToDate = (timestamp: Timestamp) => {
+  const currentDate = timestamp.toDate();
+
+  // Format the date and time components
+  const year = currentDate.getFullYear();
+  const month = String(currentDate.getMonth() + 1).padStart(2, "0");
+  const day = String(currentDate.getDate()).padStart(2, "0");
+
+  return `${month}-${day}-${year}`;
+};
+
+/**
+ * Increment dictionary values based on keys in data
+ * @param {Dict<Dict<number>>} dict a dictionary of dictionaries of numbers,
+ * where the inner dictionary is a key-value pair of a statistic and its count
+ * @param {string[]} keys1 keys to increment in dict
+ * @param {Dict<string>} data a dictionary of strings, where the keys are used
+ * to increment dict
+ */
+const batchIncrementDicts = (
+  dict: Dict<Dict<number>>,
+  keys1: string[],
+  data: Dict<string>
+) => {
+  for (const k of keys1) {
+    if (k in data) {
+      pushToDict(dict[k], data[k], 1);
+    }
+  }
+};
+
+/**
+ * Increment a dictionary value by one based on a key
+ * @param {Dict<number>} dict a dictionary of numbers
+ * @param {string} key a key to increment
+ * @param {value} value a value to check if exists before incrementing
+ */
+const pushToDict = (dict: Dict<number>, key: string, value: number) => {
+  if (value) {
+    if (key in dict) {
+      dict[key] += 1;
+    } else {
+      dict[key] = 1;
+    }
+  }
+};
+
+/**
+ * Replace empty strings and "Prefer not to answer" with "No Answer"
+ * @param {Dict<string>} dict a dictionary of strings to check
+ */
+const cleanupNoAnswer = (dict: Dict<string>) => {
+  for (const k in dict) {
+    if (dict[k] === "" || dict[k] === "Prefer not to answer") {
+      dict[k] = "No Answer";
+    }
+  }
+};
+
+/**
+ * Apply data cleanup to demographics statistics
+ * @param {Dict<string>} demographics demographics statistics data to clean up
+ */
+const cleanupDemographics = (demographics: Dict<string>) => {
+  if ((demographics.ucsc_college_affiliation as string).includes("N/A")) {
+    demographics.ucsc_college_affiliation = "N/A";
+  }
+
+  if ((demographics.first_cruzhacks as string).includes("Yes")) {
+    demographics.first_cruzhacks = "Yes";
+  }
+  if ((demographics.first_cruzhacks as string).includes("No")) {
+    demographics.first_cruzhacks = "No";
+  }
+
+  if ((demographics.hackathon_experience as string).includes("0")) {
+    demographics.hackathon_experience = "0";
+  }
+
+  cleanupNoAnswer(demographics);
+};
+
+/**
+ * Apply data cleanup to logistics statistics
+ * @param {Dict<string>} logistics logistics statistics data to clean up
+ */
+const cleanupLogistics = (logistics: Dict<string>) => {
+  if ((logistics.need_travel_reimbursement as string).includes("Yes")) {
+    logistics.need_travel_reimbursement = "Yes";
+  }
+  if ((logistics.need_travel_reimbursement as string).includes("No")) {
+    logistics.need_travel_reimbursement = "No";
+  }
+
+  if ((logistics.need_charter_bus as string).includes("Yes")) {
+    logistics.need_charter_bus = "Yes";
+  }
+  if ((logistics.need_charter_bus as string).includes("No")) {
+    logistics.need_charter_bus = "No";
+  }
+
+  if ((logistics.need_campus_parking_permit as string).includes("Yes")) {
+    logistics.need_campus_parking_permit = "Yes";
+  }
+  if ((logistics.need_campus_parking_permit as string).includes("No")) {
+    logistics.need_campus_parking_permit = "No";
+  }
+
+  if (
+    (logistics.attendence_possible_wo_reimbursement as string).includes("Yes")
+  ) {
+    logistics.attendence_possible_wo_reimbursement = "Yes";
+  }
+  if (
+    (logistics.attendence_possible_wo_reimbursement as string).includes("No")
+  ) {
+    logistics.attendence_possible_wo_reimbursement = "No";
+  }
+
+  cleanupNoAnswer(logistics);
+};
+
+/**
+ * Convert a dictionary of dictionaries of numbers to a dictionary of arrays for
+ * use in react-recharts
+ * @param {Dict<Dict<strings>>} dict a dictionary of dictionaries of numbers,
+ * where the inner dictionary is a key-value pair of a statistic and its count
+ * @return {Dict<Dict<strings>[]>} a dictionary of arrays for use in
+ * react-recharts
+ */
+const dictToRechartsArray = (dict: Dict<Dict<number>>) => {
+  return Object.entries(dict).reduce(
+    (acc, [statFieldKey, statFieldValues]) => ({
+      ...acc,
+      [statFieldKey]: Object.entries(statFieldValues).map((stat) => ({
+        name: stat[0],
+        value: stat[1],
+      })),
+    }),
+    {}
+  );
 };
 
 /**
@@ -24,44 +170,163 @@ type StatisticsDict = {
 app.post("/generate", async (req, res) => {
   try {
     // Create statistics dictionary
-    const statisticsDict: StatisticsDict = {
-      ages: {},
+    const statistics = {
+      // const statisticsDict: StatisticsDict = {
+      submissions: {
+        per_day: {},
+        total: 0,
+        accepted: 0,
+        rejected: 0,
+        approvalRate: 0,
+      },
+      demographics: {
+        age: {},
+        ethnic_background: {},
+        sexual_orientation: {},
+        gender_identity_one: {},
+        gender_identity_two: {},
+        underepresented_group: {},
+
+        country: {},
+        ucsc_vs_non_ucsc: {},
+        ucsc_college_affiliation: {},
+        year_in_school: {},
+        graduation_year: {},
+        area_of_study: {},
+        hackathon_experience: {},
+        first_cruzhacks: {},
+      },
+      logistics: {
+        need_travel_reimbursement: {},
+        need_charter_bus: {},
+        need_campus_parking_permit: {},
+        attendence_possible_wo_reimbursement: {},
+
+        tshirt_size: {},
+        dietary_restrictions: {},
+      },
+      referral: {
+        cruzhacks_referral: {},
+      },
     };
 
-    // Get all demographics
+    // Submissions
+    const applications = await getFirestore()
+      .collectionGroup("user_items")
+      .orderBy("_submitted")
+      .get();
+
+    statistics.submissions.total = applications.docs.length;
+
+    applications.docs.map((doc) => {
+      const data = doc.data();
+
+      if (data.status === "accepted") {
+        statistics.submissions.accepted += 1;
+      } else if (data.status === "rejected") {
+        statistics.submissions.rejected += 1;
+      }
+
+      const day = timestampToDate(data._submitted);
+
+      pushToDict(statistics.submissions.per_day, day, 1);
+    });
+
+    statistics.submissions.approvalRate =
+      statistics.submissions.accepted / statistics.submissions.total;
+
+    // Demographcis
     const demographics = await getFirestore()
       .collectionGroup("sections")
       .orderBy("country")
       .get();
 
-    // Add to statistics dictionary
     demographics.docs.map((doc) => {
       const data = doc.data();
+      cleanupDemographics(data);
 
-      // age
-      const age = data.age;
-      if (age) {
-        if (age in statisticsDict.ages) {
-          statisticsDict.ages[age] += 1;
-        } else {
-          statisticsDict.ages[age] = 1;
-        }
-      }
+      data.ucsc_vs_non_ucsc =
+        data.school === "University of California, Santa Cruz" ?
+          "UCSC" :
+          "Non-UCSC";
+
+      batchIncrementDicts(
+        statistics.demographics,
+        Object.keys(statistics.demographics),
+        data
+      );
     });
 
-    // Convert statistics dictionary to array
-    const _statistics = Object.entries(statisticsDict).reduce(
-      (acc, [statFieldKey, statFieldValues]) => ({
-        ...acc,
-        [statFieldKey]: Object.entries(statFieldValues).map((stat) => ({
-          name: stat[0],
-          value: stat[1],
-        })),
-      }),
-      []
-    );
+    // Logistics
+    const logistics = await getFirestore()
+      .collectionGroup("sections")
+      .orderBy("need_travel_reimbursement")
+      .get();
 
-    res.status(200).send({ data: _statistics } as APIResponse);
+    logistics.docs.map((doc) => {
+      const data = doc.data();
+      cleanupLogistics(data);
+
+      batchIncrementDicts(
+        statistics.logistics,
+        Object.keys(statistics.logistics),
+        data
+      );
+    });
+
+    // Referral
+    const referral = await getFirestore()
+      .collectionGroup("sections")
+      .orderBy("cruzhacks_referral")
+      .get();
+
+    referral.docs.map((doc) => {
+      const data = doc.data();
+      cleanupNoAnswer(data);
+
+      batchIncrementDicts(
+        statistics.referral,
+        Object.keys(statistics.referral),
+        data
+      );
+    });
+
+    await getFirestore()
+      .collection("statistics")
+      .doc("precomputed_unformatted")
+      .set({
+        ...statistics,
+        _last_computed: FieldValue.serverTimestamp(),
+      });
+
+    logger.info("Statistics pre-computed; Written to firestore");
+
+    const rechartsStatistics = {
+      submissions: {
+        ...dictToRechartsArray({
+          per_day: statistics.submissions.per_day,
+        }),
+        total: statistics.submissions.total,
+        accepted: statistics.submissions.accepted,
+        rejected: statistics.submissions.rejected,
+        approvalRate: statistics.submissions.approvalRate,
+      },
+      demographics: dictToRechartsArray(statistics.demographics),
+      logistics: dictToRechartsArray(statistics.logistics),
+      referral: dictToRechartsArray(statistics.referral),
+    };
+
+    await getFirestore()
+      .collection("statistics")
+      .doc("pre_computed_recharts")
+      .set({
+        ...rechartsStatistics,
+        _last_computed: FieldValue.serverTimestamp(),
+      });
+
+    logger.info("Statistics recharts pre-computed; Written to firestore");
+
+    res.status(200).send({ data: rechartsStatistics } as APIResponse);
   } catch (err) {
     const error = ensureError(err);
     res.status(500).send({ error: error.message } as APIResponse);
