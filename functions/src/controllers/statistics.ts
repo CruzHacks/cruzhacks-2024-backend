@@ -74,7 +74,11 @@ const pushToDict = (dict: Dict<number>, key: string, value: number) => {
  */
 const cleanupNoAnswer = (dict: Dict<string>) => {
   for (const k in dict) {
-    if (dict[k] === "" || dict[k] === "Prefer not to answer") {
+    if (
+      dict[k] === undefined ||
+      dict[k] === "" ||
+      dict[k].toLowerCase() === "prefer not to answer"
+    ) {
       dict[k] = "No Answer";
     }
   }
@@ -85,6 +89,87 @@ const cleanupNoAnswer = (dict: Dict<string>) => {
  * @param {Dict<string>} demographics demographics statistics data to clean up
  */
 const cleanupDemographics = (demographics: Dict<string>) => {
+  if (demographics.age) {
+    const age = Number(demographics.age);
+
+    if (age < 18) {
+      demographics.age = "0-17";
+    } else if (age >= 18 && age <= 25) {
+      demographics.age = "18-25";
+      demographics.age_range_18_to_25 = String(age);
+    } else if (age > 25 && age <= 30) {
+      demographics.age = "26-30";
+    } else if (age > 30) {
+      demographics.age = "> 30";
+    }
+  }
+
+  if (demographics.gender_identity_one) {
+    const providedGenderIdentityOne = [
+      "Transgender",
+      "Cisgender",
+      "Non-binary",
+      "Prefer not to answer",
+    ];
+
+    let genderIdentityOne = demographics.gender_identity_one;
+
+    if (genderIdentityOne.toLowerCase().includes("no")) {
+      genderIdentityOne = "Prefer not to answer";
+    }
+    if (!providedGenderIdentityOne.includes(genderIdentityOne)) {
+      genderIdentityOne = "Other";
+    }
+
+    demographics.gender_identity_one = genderIdentityOne;
+  }
+
+  if (demographics.gender_identity_two) {
+    const providedGenderIdentityTwo = [
+      "Man",
+      "Woman",
+      "Non-binary",
+      "Prefer not to answer",
+    ];
+
+    let genderIdentityTwo = demographics.gender_identity_two;
+
+    if (genderIdentityTwo.toLowerCase().includes("no")) {
+      genderIdentityTwo = "Prefer not to answer";
+    }
+    if (!providedGenderIdentityTwo.includes(genderIdentityTwo)) {
+      genderIdentityTwo = "Other";
+    }
+
+    demographics.gender_identity_two = genderIdentityTwo;
+  }
+
+  if (demographics.sexual_orientation) {
+    const providedSexualOrientation = [
+      "Heterosexual or straight",
+      "Gay or lesbian",
+      "Bisexual",
+      "Queer",
+      "Prefer Not to Answer",
+    ];
+
+    let sexualOrientation = demographics.sexual_orientation;
+
+    if (sexualOrientation.toLowerCase().includes("no")) {
+      sexualOrientation = "Prefer Not to Answer";
+    }
+
+    if (!providedSexualOrientation.includes(sexualOrientation)) {
+      sexualOrientation = "Other";
+    }
+
+    if (sexualOrientation === "Heterosexual or straight") {
+      sexualOrientation = "Heterosexual";
+    }
+
+    demographics.sexual_orientation = sexualOrientation;
+  }
+
   if ((demographics.ucsc_college_affiliation as string).includes("N/A")) {
     demographics.ucsc_college_affiliation = "N/A";
   }
@@ -181,6 +266,7 @@ app.post("/generate", async (req, res) => {
       },
       demographics: {
         age: {},
+        age_range_18_to_25: {},
         ethnic_background: {},
         sexual_orientation: {},
         gender_identity_one: {},
@@ -243,12 +329,17 @@ app.post("/generate", async (req, res) => {
 
     demographics.docs.map((doc) => {
       const data = doc.data();
-      cleanupDemographics(data);
+
+      if (data.age && data.age >= 18 && data.age <= 25) {
+        data.age_range_18_to_25 = String(data.age);
+      }
 
       data.ucsc_vs_non_ucsc =
         data.school === "University of California, Santa Cruz" ?
           "UCSC" :
           "Non-UCSC";
+
+      cleanupDemographics(data);
 
       batchIncrementDicts(
         statistics.demographics,
