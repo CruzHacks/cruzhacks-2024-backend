@@ -278,6 +278,7 @@ const cleanupLogistics = (logistics: Dict<string>) => {
     let tshirtSize = logistics.tshirt_size;
 
     if (!providedTshirtSizes.includes(tshirtSize)) {
+      logistics.other_tshirt_size = tshirtSize;
       tshirtSize = "Other";
     }
 
@@ -291,6 +292,8 @@ const cleanupLogistics = (logistics: Dict<string>) => {
       "Vegetarian",
       "Peanut Allergies",
       "Lactose Intolerant",
+      "No Beef",
+      "No Pork",
       "None",
     ];
 
@@ -300,7 +303,12 @@ const cleanupLogistics = (logistics: Dict<string>) => {
       dietaryRestrictions = "None";
     }
 
-    if (!providedDietaryRestrictions.includes(dietaryRestrictions)) {
+    if (dietaryRestrictions.toLowerCase().includes("no beef")) {
+      dietaryRestrictions = "No Beef";
+    } else if (dietaryRestrictions.toLowerCase().includes("no pork")) {
+      dietaryRestrictions = "No Pork";
+    } else if (!providedDietaryRestrictions.includes(dietaryRestrictions)) {
+      logistics.other_dietary_restrictions = dietaryRestrictions;
       dietaryRestrictions = "Other";
     }
 
@@ -372,7 +380,9 @@ app.post("/generate", async (req, res) => {
         attendence_possible_wo_reimbursement: {},
 
         tshirt_size: {},
+        other_tshirt_size: {},
         dietary_restrictions: {},
+        other_dietary_restrictions: {},
       },
       referral: {
         cruzhacks_referral: {},
@@ -507,6 +517,9 @@ app.post("/generate", async (req, res) => {
             statistics.logistics.need_campus_parking_permit,
           attendence_possible_wo_reimbursement:
             statistics.logistics.attendence_possible_wo_reimbursement,
+          other_dietary_restrictions:
+            statistics.logistics.other_dietary_restrictions,
+          other_tshirt_size: statistics.logistics.other_tshirt_size,
         }),
         tshirt_size: statistics.logistics.tshirt_size,
         dietary_restrictions: statistics.logistics.dietary_restrictions,
