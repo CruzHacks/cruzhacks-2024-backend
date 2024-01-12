@@ -93,6 +93,38 @@ app.get("/checkRoleSynced", isAuthenticated, async (req, res) => {
 });
 
 /**
+ * Endpoint to Check-In a user.
+ */
+app.post(
+  "/checkIn",
+  isAuthenticated,
+  isAuthorized({ hasRole: ["admin"] }),
+  async (req, res) => {
+    try {
+      const uid = req.query.uid as string;
+
+      const userRecord = await getAuth().getUser(uid);
+
+      await getFirestore().doc(`users/${userRecord.email}`).update({
+        checkedIn: true,
+      });
+
+      logger.info("Checked in user: " + userRecord.email);
+
+      res.status(200).send({
+        data: {
+          userRecord,
+        },
+      } as APIResponse);
+    } catch (err) {
+      const error = ensureError(err);
+      logger.error(error);
+      res.status(500).send({ error: error.message } as APIResponse);
+    }
+  }
+);
+
+/**
  * Endpoint to retrieve list of users with role.
  *
  * NOTE: This endpoint only returns up to 1000 users sorted by UID. To fix this
@@ -129,9 +161,9 @@ app.get(
               displayName: user.displayName,
               email: user.email,
               pronouns:
-                user.email && user.email in pronounsDict ?
-                  pronounsDict[user.email] :
-                  undefined,
+                user.email && user.email in pronounsDict
+                  ? pronounsDict[user.email]
+                  : undefined,
               role: user.customClaims?.role,
             };
           });
