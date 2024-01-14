@@ -229,8 +229,9 @@ const cleanupDemographics = (demographics: Dict<string>) => {
 /**
  * Apply data cleanup to logistics statistics
  * @param {Dict<string>} logistics logistics statistics data to clean up
+ * @param {string[]} RSVPdHackers list of hackers who RSVPd
  */
-const cleanupLogistics = (logistics: Dict<string>) => {
+const cleanupLogistics = (logistics: Dict<string>, RSVPdHackers: string[]) => {
   if ((logistics.need_travel_reimbursement as string).includes("Yes")) {
     logistics.need_travel_reimbursement = "Yes";
   }
@@ -282,6 +283,16 @@ const cleanupLogistics = (logistics: Dict<string>) => {
       tshirtSize = "Other";
     }
 
+    // RSVPd only
+    if (RSVPdHackers.includes(logistics.email)) {
+      if (!providedTshirtSizes.includes(tshirtSize)) {
+        logistics.rsvpd_tshirt_size = "Other";
+        logistics.rsvpd_other_tshirt_size = logistics.tshirt_size;
+      } else {
+        logistics.rsvpd_tshirt_size = logistics.tshirt_size;
+      }
+    }
+
     logistics.tshirt_size = tshirtSize;
   }
 
@@ -310,6 +321,29 @@ const cleanupLogistics = (logistics: Dict<string>) => {
     } else if (!providedDietaryRestrictions.includes(dietaryRestrictions)) {
       logistics.other_dietary_restrictions = dietaryRestrictions;
       dietaryRestrictions = "Other";
+    }
+
+    // RSVPd only
+    if (RSVPdHackers.includes(logistics.email)) {
+      let rsvpdDietaryRestrictions = logistics.dietary_restrictions;
+
+      if (rsvpdDietaryRestrictions.toLowerCase().includes("n/a")) {
+        rsvpdDietaryRestrictions = "None";
+      }
+
+      if (rsvpdDietaryRestrictions.toLowerCase().includes("no beef")) {
+        rsvpdDietaryRestrictions = "No Beef";
+      } else if (rsvpdDietaryRestrictions.toLowerCase().includes("no pork")) {
+        rsvpdDietaryRestrictions = "No Pork";
+      } else if (
+        !providedDietaryRestrictions.includes(rsvpdDietaryRestrictions)
+      ) {
+        logistics.rsvpd_other_dietary_restrictions =
+          logistics.dietary_restrictions;
+        rsvpdDietaryRestrictions = "Other";
+      }
+
+      logistics.rsvpd_dietary_restrictions = rsvpdDietaryRestrictions;
     }
 
     logistics.dietary_restrictions = dietaryRestrictions;
@@ -380,14 +414,20 @@ app.post("/generate", async (req, res) => {
         attendence_possible_wo_reimbursement: {},
 
         tshirt_size: {},
+        rsvpd_tshirt_size: {},
         other_tshirt_size: {},
+        rsvpd_other_tshirt_size: {},
         dietary_restrictions: {},
+        rsvpd_dietary_restrictions: {},
         other_dietary_restrictions: {},
+        rsvpd_other_dietary_restrictions: {},
       },
       referral: {
         cruzhacks_referral: {},
       },
     };
+
+    const RSVPdHackers: string[] = [];
 
     // Submissions
     const applications = await getFirestore()
@@ -404,6 +444,10 @@ app.post("/generate", async (req, res) => {
         statistics.submissions.accepted += 1;
       } else if (data.status === "rejected") {
         statistics.submissions.rejected += 1;
+      }
+
+      if (data.rsvp) {
+        RSVPdHackers.push(data.email);
       }
 
       const day = timestampToDate(data._submitted);
@@ -461,7 +505,7 @@ app.post("/generate", async (req, res) => {
 
     logistics.docs.map((doc) => {
       const data = doc.data();
-      cleanupLogistics(data);
+      cleanupLogistics(data, RSVPdHackers);
 
       batchIncrementDicts(
         statistics.logistics,
@@ -517,12 +561,18 @@ app.post("/generate", async (req, res) => {
             statistics.logistics.need_campus_parking_permit,
           attendence_possible_wo_reimbursement:
             statistics.logistics.attendence_possible_wo_reimbursement,
+          rsvpd_other_dietary_restrictions:
+            statistics.logistics.rsvpd_other_dietary_restrictions,
           other_dietary_restrictions:
             statistics.logistics.other_dietary_restrictions,
+          rsvpd_other_tshirt_size: statistics.logistics.rsvpd_other_tshirt_size,
           other_tshirt_size: statistics.logistics.other_tshirt_size,
         }),
         tshirt_size: statistics.logistics.tshirt_size,
+        rsvpd_tshirt_size: statistics.logistics.rsvpd_tshirt_size,
         dietary_restrictions: statistics.logistics.dietary_restrictions,
+        rsvpd_dietary_restrictions:
+          statistics.logistics.rsvpd_dietary_restrictions,
       },
       referral: dictToRechartsArray(statistics.referral),
     };
