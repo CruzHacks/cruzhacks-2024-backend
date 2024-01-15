@@ -61,7 +61,8 @@ app.post("/unauthenticated", async (req, res) => {
       .set(appDoc);
 
     await getFirestore().doc(`users/${email}`).set({
-      pronouons: application.demographics.pronouns,
+      pronouns: application.demographics.pronouns,
+      checkedIn: false,
       _last_committed: FieldValue.serverTimestamp(),
     });
 
@@ -84,6 +85,11 @@ app.post("/unauthenticated", async (req, res) => {
       .collection(`users/${email}/user_items/application/sections`)
       .doc("socials")
       .set({ email, ...application.socials });
+
+      await getFirestore()
+      .collection(`users/${email}/user_items/`)
+      .doc("team")
+      .set({ invites: [], teamName: "", teamLeader: "" });
 
     res.status(200).send({
       data: {
@@ -139,7 +145,7 @@ app.post("/authenticated", isAuthenticated, async (req, res) => {
       .set(appDoc);
 
     await getFirestore().doc(`users/${email}`).set({
-      pronouons: application.demographics.pronouns,
+      pronouns: application.demographics.pronouns,
       _last_committed: FieldValue.serverTimestamp(),
     });
 

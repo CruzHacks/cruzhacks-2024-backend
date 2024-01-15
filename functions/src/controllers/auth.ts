@@ -111,11 +111,11 @@ app.get(
         .get()
         .then((querySnapshot) => {
           pronounsDict = querySnapshot.docs.reduce((acc, doc) => {
-            if (!doc.data().pronouons) return acc;
+            if (!doc.data().pronouns) return acc;
 
             return {
               ...acc,
-              [doc.id]: doc.data().pronouons,
+              [doc.id]: doc.data().pronouns,
             };
           }, {});
         });
