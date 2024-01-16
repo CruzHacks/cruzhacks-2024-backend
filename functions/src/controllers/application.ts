@@ -2,7 +2,7 @@ import { onRequest } from "firebase-functions/v2/https";
 import * as express from "express";
 import * as cors from "cors";
 import bodyParser = require("body-parser");
-import { corsConfig, isAuthenticated } from "../utils/middleware";
+import { corsConfig, isAuthenticated, isAuthorized } from "../utils/middleware";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import {
   APIResponse,
@@ -206,5 +206,151 @@ app.post("/authenticated", isAuthenticated, async (req, res) => {
     } as APIResponse);
   }
 });
+
+app.get(
+  "/export",
+  isAuthenticated,
+  isAuthorized({ hasRole: ["admin"] }),
+  async (req, res) => {
+    try {
+      const submissions = await getFirestore()
+        .collectionGroup("user_items")
+        .orderBy("_submitted")
+        .get();
+
+      const emails = submissions.docs.map((doc) => doc.data().email);
+
+      // eslint-disable-next-line
+      const applications: any = submissions.docs.reduce((acc, doc) => {
+        if (!doc.data()) return acc;
+
+        return {
+          ...acc,
+          [doc.data().email]: {
+            submission: {
+              status: doc.data().status,
+              rsvp: doc.data().rsvp,
+              _submitted: doc.data()._submitted.toDate(),
+            },
+          },
+        };
+      }, {});
+
+      await getAuth()
+        .listUsers(1000)
+        .then((userRecords) => {
+          userRecords.users.forEach((user) => {
+            if (!user.email) return;
+            if (!emails.includes(user.email)) return;
+
+            if (user.email in applications) {
+              applications[user.email].user = {
+                email: user.email,
+                phone_number: user.phoneNumber,
+                display_name: user.displayName,
+              };
+            }
+          });
+        });
+
+      await getFirestore()
+        .collectionGroup("users")
+        .get()
+        .then((users) => {
+          users.docs.forEach((doc) => {
+            const user = doc.data();
+            if (!user.pronouons) return;
+            if (!emails.includes(doc.id)) return;
+
+            if (doc.id in applications) {
+              applications[doc.id].user.checked_in = user.checkedIn;
+            }
+          });
+        });
+
+      await getFirestore()
+        .collectionGroup("sections")
+        .orderBy("country")
+        .get()
+        .then((demographics) =>
+          demographics.docs.forEach((doc) => {
+            const { email, ...demo } = doc.data();
+            if (!emails.includes(email)) return;
+
+            if (email in applications) {
+              applications[email].demographics = demo;
+            }
+          })
+        );
+
+      await getFirestore()
+        .collectionGroup("sections")
+        .orderBy("grand_invention")
+        .get()
+        .then((shortResponse) =>
+          shortResponse.docs.forEach((doc) => {
+            const { email, ...short } = doc.data();
+            if (!emails.includes(email)) return;
+
+            if (email in applications) {
+              applications[email].short_response = short;
+            }
+          })
+        );
+
+      await getFirestore()
+        .collectionGroup("sections")
+        .orderBy("need_travel_reimbursement")
+        .get()
+        .then((logistics) =>
+          logistics.docs.forEach((doc) => {
+            const { email, ...log } = doc.data();
+            if (!emails.includes(email)) return;
+
+            if (email in applications) {
+              applications[email].logistics = log;
+            }
+          })
+        );
+
+      await getFirestore()
+        .collectionGroup("sections")
+        .orderBy("cruzhacks_referral")
+        .get()
+        .then((socials) =>
+          socials.docs.forEach((doc) => {
+            const { email, ...social } = doc.data();
+            if (!emails.includes(email)) return;
+
+            if (email in applications) {
+              applications[email].socials = social;
+            }
+          })
+        );
+
+      const applicationsArray = Object.keys(applications).map((key) => ({
+        ...applications[key],
+      }));
+
+      logger.info("Successfully exported applications");
+
+      res.status(200).send({
+        data: {
+          applications: applicationsArray,
+        },
+      } as APIResponse);
+    } catch (err) {
+      const error = ensureError(err);
+      logger.error(error);
+      res.status(500).send({
+        error: "Internal server error, could not complete request.",
+        data: {
+          message: error.message,
+          error: error,
+        },
+      } as APIResponse);
+    }
+  }
+);
 
 export const application = onRequest(app);

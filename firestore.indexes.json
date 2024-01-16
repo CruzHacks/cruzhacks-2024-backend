@@ -49,6 +49,29 @@
     },
     {
       "collectionGroup": "sections",
+      "fieldPath": "grand_invention",
+      "ttl": false,
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "DESCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "arrayConfig": "CONTAINS",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "sections",
       "fieldPath": "need_travel_reimbursement",
       "ttl": false,
       "indexes": [
