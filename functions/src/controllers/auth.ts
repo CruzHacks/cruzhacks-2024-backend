@@ -161,9 +161,9 @@ app.get(
               displayName: user.displayName,
               email: user.email,
               pronouns:
-                user.email && user.email in pronounsDict
-                  ? pronounsDict[user.email]
-                  : undefined,
+                user.email && user.email in pronounsDict ?
+                  pronounsDict[user.email] :
+                  undefined,
               role: user.customClaims?.role,
             };
           });
