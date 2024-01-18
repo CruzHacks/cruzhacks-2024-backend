@@ -161,9 +161,9 @@ app.get(
               displayName: user.displayName,
               email: user.email,
               pronouns:
-                user.email && user.email in pronounsDict ?
-                  pronounsDict[user.email] :
-                  undefined,
+                user.email && user.email in pronounsDict
+                  ? pronounsDict[user.email]
+                  : undefined,
               role: user.customClaims?.role,
             };
           });
@@ -181,5 +181,46 @@ app.get(
     }
   }
 );
+
+/**
+ * Endpoint to upgrade RSVPD applicants to hackers.
+ */
+app.get("/upgradeRSVPD", async (req, res) => {
+  try {
+    const applications = await getFirestore()
+      .collectionGroup("user_items")
+      .orderBy("_submitted")
+      .get();
+
+    const RSVPdHackers: string[] = [];
+
+    applications.docs.forEach((doc) => {
+      if (doc.data().rsvp === true) {
+        RSVPdHackers.push(doc.data().email);
+      }
+    });
+
+    RSVPdHackers.forEach((email) => {
+      try {
+        getFirestore().doc(`users/${email}/user_items/role`).update({
+          role: "hacker",
+        });
+        logger.log("Updated hacker role for: " + email);
+      } catch (err) {
+        logger.error(`Tried updating '${email}' hacker role: ${err}`);
+      }
+    });
+
+    res.status(201).send({
+      data: {
+        RSVPdHackers,
+      },
+    } as APIResponse);
+  } catch (err) {
+    const error = ensureError(err);
+    logger.error(error);
+    res.status(500).send({ error: error.message } as APIResponse);
+  }
+});
 
 export const auth = onRequest(app);
