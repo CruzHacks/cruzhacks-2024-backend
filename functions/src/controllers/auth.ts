@@ -265,4 +265,64 @@ app.get("/upgradeRSVPD", async (req, res) => {
   }
 });
 
+app.get("/fixDB", async (req, res) => {
+  try {
+    const applications = await getFirestore()
+      .collectionGroup("user_items")
+      .where("rsvp", "==", true)
+      .get();
+
+    const RSVPdHackers: string[] = [];
+
+    applications.docs.forEach((doc) => {
+      if (doc.data().rsvp === true) {
+        RSVPdHackers.push(doc.data().email);
+      }
+    });
+
+    const errors = [];
+    const alreadyFixed = [];
+    for (const emailIdx in RSVPdHackers) {
+      if (!emailIdx) continue;
+      const email = RSVPdHackers[emailIdx];
+
+      try {
+        const team = await getFirestore()
+          .doc(`users/${email}/user_items/team`)
+          .get();
+
+        if (team.exists) {
+          alreadyFixed.push(email);
+          continue;
+        }
+        // Updating user role
+        await getFirestore().doc(`users/${email}/user_items/team`).set(
+          {
+            invites: [],
+            teamLeader: "",
+            teamName: "",
+          },
+          { merge: true }
+        );
+      } catch (err) {
+        errors.push(err);
+      }
+    }
+
+    res.status(201).send({
+      data: {
+        RSVPdHackers,
+        alreadyFixed,
+        errors,
+      },
+    } as APIResponse);
+  } catch (err) {
+    logger.error(err);
+    const error = ensureError(err);
+    res
+      .status(500)
+      .send({ error: error.message, data: { error: err } } as APIResponse);
+  }
+});
+
 export const auth = onRequest(app);
