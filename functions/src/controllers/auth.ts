@@ -6,7 +6,7 @@ import { corsConfig, isAuthenticated, isAuthorized } from "../utils/middleware";
 import { getFirestore } from "firebase-admin/firestore";
 import ensureError from "../utils/ensureError";
 import { logger } from "firebase-functions/v2";
-import { APIResponse } from "../utils/schema";
+import { APIResponse, UserRoles } from "../utils/schema";
 import { getAuth } from "firebase-admin/auth";
 
 const app = express();
@@ -200,20 +200,38 @@ app.get("/upgradeRSVPD", async (req, res) => {
       }
     });
 
-    RSVPdHackers.forEach((email) => {
+    let failedUpgrades = 0;
+    const successfulUpgrades: string[] = [];
+    const errors: any[] = [];
+
+    for (const emailIdx in RSVPdHackers) {
+      if (!emailIdx) continue;
+      const email = RSVPdHackers[emailIdx];
+
       try {
-        getFirestore().doc(`users/${email}/user_items/role`).update({
+        // Updating user role
+        await getFirestore().doc(`users/${email}/user_items/role`).update({
           role: "hacker",
         });
-        logger.log("Updated hacker role for: " + email);
+
+        // Updating custom claims
+        const user = await getAuth().getUserByEmail(email);
+        const { uid } = user;
+
+        await getAuth().setCustomUserClaims(uid, { role: UserRoles[1] });
       } catch (err) {
-        logger.error(`Tried updating '${email}' hacker role: ${err}`);
+        failedUpgrades += 1;
+        errors.push(err);
       }
-    });
+    }
 
     res.status(201).send({
       data: {
         RSVPdHackers,
+        successfulUpgrades,
+        failedUpgrades,
+        notSuccessful: RSVPdHackers.length - successfulUpgrades.length,
+        errors,
       },
     } as APIResponse);
   } catch (err) {
