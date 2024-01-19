@@ -182,6 +182,30 @@ app.get(
   }
 );
 
+app.post("/fixUsers", async (req, res) => {
+  try {
+    const toBeDelete = [];
+    for (let i = 0; i < 522; i++) {
+      const documentRef = await getFirestore().doc(`users/${i}`);
+      const doc = await documentRef.get();
+      toBeDelete.push(doc.id);
+
+      await getFirestore().recursiveDelete(documentRef);
+    }
+
+    res.status(200).send({
+      data: {
+        toBeDelete,
+      },
+    } as APIResponse);
+  } catch (err) {
+    console.error(err);
+    const error = ensureError(err);
+    logger.error(error);
+    res.status(500).send({ error: error.message } as APIResponse);
+  }
+});
+
 /**
  * Endpoint to upgrade RSVPD applicants to hackers.
  */
